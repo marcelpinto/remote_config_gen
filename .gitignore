@@ -112,9 +112,9 @@ app.*.symbols
 
 # Firebase
 firebase.json
-example/ios/Runner/GoogleService-Info.plist
-example/android/app/google-services.json
-example/lib/firebase_options.dart
+**/ios/Runner/GoogleService-Info.plist
+**/android/app/google-services.json
+**/lib/firebase_options.dart
 
 # Exceptions to above rules.
 !**/ios/**/default.mode1v3
