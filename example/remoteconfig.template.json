@@ -1,0 +1,98 @@
+{
+    "welcome_message": "Welcome to our amazing app!",
+    "feature_enabled": true,
+    "max_retry_count": 3,
+    "api_timeout": 30.0,
+    "theme_config": "{\"primaryColor\": \"#FF0000\", \"darkMode\": false}",
+    "parameters": {
+        "welcome_message": {
+            "defaultValue": {
+                "value": "Welcome to our amazing app!"
+            },
+            "valueType": "STRING",
+            "description": "Message shown to users when they first open the app"
+        },
+        "feature_enabled": {
+            "defaultValue": {
+                "value": "true"
+            },
+            "valueType": "BOOLEAN",
+            "description": "Whether the new feature is enabled for users"
+        },
+        "max_retry_count": {
+            "defaultValue": {
+                "value": "3"
+            },
+            "valueType": "NUMBER",
+            "description": "Maximum number of retry attempts for network requests"
+        },
+        "api_timeout": {
+            "defaultValue": {
+                "value": "30.0"
+            },
+            "valueType": "NUMBER",
+            "description": "API request timeout in seconds"
+        },
+        "languages_config": {
+            "defaultValue": {
+                "value": "{\"en\": \"English\", \"fr\": \"French\"}"
+            },
+            "valueType": "JSON",
+            "description": "Languages configuration as JSON"
+        }
+    },
+    "parameterGroups": {
+        "ui_settings": {
+            "description": "User interface related settings",
+            "parameters": {
+                "primary_color": {
+                    "defaultValue": {
+                        "value": "#a0a0a0"
+                    },
+                    "valueType": "STRING",
+                    "description": "Primary color"
+                },
+                "dark_mode": {
+                    "defaultValue": {
+                        "value": "false"
+                    },
+                    "valueType": "BOOLEAN",
+                    "description": "Dark mode"
+                },
+                "button_color": {
+                    "defaultValue": {
+                        "value": "#007AFF"
+                    },
+                    "valueType": "STRING",
+                    "description": "Primary button color"
+                },
+                "animation_duration": {
+                    "defaultValue": {
+                        "value": "300"
+                    },
+                    "valueType": "NUMBER",
+                    "description": "Animation duration in milliseconds"
+                }
+            }
+        },
+        "api_settings": {
+            "description": "API related configuration",
+            "parameters": {
+                "base_url": {
+                    "defaultValue": {
+                        "value": "https://api.example.com"
+                    },
+                    "valueType": "STRING",
+                    "description": "Base URL for API requests"
+                },
+                "enable_logging": {
+                    "defaultValue": {
+                        "value": "false"
+                    },
+                    "valueType": "BOOLEAN",
+                    "description": "Enable API request logging"
+                }
+            }
+        }
+    }
+}

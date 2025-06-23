@@ -1,0 +1,4 @@
+# Example configuration for remote_config_gen
+# This file defines the input JSON file location and output directory
+input: remoteconfig.template.json
+output: lib/generated

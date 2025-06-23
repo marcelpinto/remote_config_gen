@@ -1,2 +1,44 @@
-# remote_config_gen
-A Flutter generator for Firebase Remote Config. Generates type-safe parameters for your app.
+# Remote Config Generator
+
+A tool to generate Dart classes from Firebase Remote Config templates for
+type safe and static typing. No more hardcoded values!
+
+## Usage
+
+1. Add the dev_dependency
+
+```yaml
+dev_dependencies:
+  remote_config_gen: 0.0.1
+```
+
+1. Download/Fetch the `remoteconfig.template.json` for your project
+
+    ```bash
+    firebase remoteconfig:get -o remoteconfig.template.json
+    ```
+
+2. Create a `remote_config_gen.yaml` file and define the configuration:
+
+    ```yaml
+    input: remoteconfig.template.json
+    output: lib/generated
+    ```
+
+3. Run the generator
+
+    ```bash
+    dart run remote_config_gen
+    ```
+
+4. Use the generated parameters:
+
+    ```dart
+    import 'package:remote_config_gen/remote_config_gen.dart';
+
+    // It will return either the remote value or the default defined in the template
+    int value = RemoteConfigParams.maxRetryCount.getValue();
+
+    // It also accepts remote config groups
+    bool isDark = RemoteConfigParams.uiSettings.darkMode.getValue();
+    ```
