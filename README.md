@@ -7,31 +7,31 @@ type safe and static typing. No more hardcoded values!
 
 1. Add the dev_dependency
 
-```yaml
-dev_dependencies:
-  remote_config_gen: 0.0.1
-```
+    ```yaml
+    dev_dependencies:
+    remote_config_gen: 0.0.1
+    ```
 
-1. Download/Fetch the `remoteconfig.template.json` for your project
+2. Download/Fetch the `remoteconfig.template.json` for your project
 
     ```bash
     firebase remoteconfig:get -o remoteconfig.template.json
     ```
 
-2. Create a `remote_config_gen.yaml` file and define the configuration:
+3. Create a `remote_config_gen.yaml` file and define the configuration:
 
     ```yaml
     input: remoteconfig.template.json
     output: lib/generated
     ```
 
-3. Run the generator
+4. Run the generator
 
     ```bash
     dart run remote_config_gen
     ```
 
-4. Use the generated parameters:
+5. Use the generated parameters:
 
     ```dart
     import 'package:remote_config_gen/remote_config_gen.dart';
