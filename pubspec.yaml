@@ -1,6 +1,6 @@
 name: remote_config_gen
-description: "A tool to generate remote config classes from the remote config template"
-version: 0.0.1
+description: "A tool to generate type-safe remote config classes based on the Firebase Remote Config template"
+version: 0.0.2
 maintainer: Marcel Pinto (@marcelpinto)
 homepage: https://shipflutter.com
 repository: https://github.com/marcelpinto/remote_config_gen
