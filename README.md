@@ -9,7 +9,7 @@ type safe and static typing. No more hardcoded values!
 
     ```yaml
     dev_dependencies:
-    remote_config_gen: 0.0.2
+        remote_config_gen: 0.0.2
     ```
 
 2. Download/Fetch the `remoteconfig.template.json` for your project
