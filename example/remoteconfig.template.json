@@ -39,6 +39,13 @@
             },
             "valueType": "JSON",
             "description": "Languages configuration as JSON"
+        },
+        "theme_config": {
+            "defaultValue": {
+                "value": "{\"primaryColor\": \"#FF0000\", \"darkMode\": false}"
+            },
+            "valueType": "JSON",
+            "description": "Theme configuration as JSON"
         }
     },
     "parameterGroups": {
