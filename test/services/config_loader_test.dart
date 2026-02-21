@@ -197,6 +197,165 @@ output: default_output
           ),
         );
       });
+
+      test('loads config without converters section', () {
+        final configFile = File('${tempDir.path}/no_converters.yaml');
+        configFile.writeAsStringSync('''
+input: template.json
+output: lib/generated
+''');
+
+        final config = configLoader.loadConfig(configFile.path);
+
+        expect(config.inputPath, equals('template.json'));
+        expect(config.outputPath, equals('lib/generated'));
+        expect(config.converters, isEmpty);
+      });
+
+      test('loads config with valid converters section', () {
+        final configFile = File('${tempDir.path}/with_converters.yaml');
+        configFile.writeAsStringSync('''
+input: template.json
+output: lib/generated
+converters:
+  theme_config:
+    type: ThemeConfig
+    converter: ThemeConfigConverter
+    import: package:my_app/models/theme.dart
+  promo_banner:
+    type: PromoBanner
+    converter: PromoBannerConverter
+    import: package:my_app/models/promo.dart
+''');
+
+        final config = configLoader.loadConfig(configFile.path);
+
+        expect(config.converters, hasLength(2));
+
+        final theme = config.converters['theme_config']!;
+        expect(theme.paramKey, equals('theme_config'));
+        expect(theme.type, equals('ThemeConfig'));
+        expect(theme.converter, equals('ThemeConfigConverter'));
+        expect(theme.import, equals('package:my_app/models/theme.dart'));
+
+        final promo = config.converters['promo_banner']!;
+        expect(promo.paramKey, equals('promo_banner'));
+        expect(promo.type, equals('PromoBanner'));
+        expect(promo.converter, equals('PromoBannerConverter'));
+        expect(promo.import, equals('package:my_app/models/promo.dart'));
+      });
+
+      test('throws ConfigurationException when converters is not a map', () {
+        final configFile = File('${tempDir.path}/bad_converters.yaml');
+        configFile.writeAsStringSync('''
+input: template.json
+output: lib/generated
+converters: not_a_map
+''');
+
+        expect(
+          () => configLoader.loadConfig(configFile.path),
+          throwsA(
+            isA<ConfigurationException>().having(
+              (e) => e.message,
+              'message',
+              contains('Invalid converters section'),
+            ),
+          ),
+        );
+      });
+
+      test('throws ConfigurationException when converter entry is not a map',
+          () {
+        final configFile = File('${tempDir.path}/bad_entry.yaml');
+        configFile.writeAsStringSync('''
+input: template.json
+output: lib/generated
+converters:
+  theme_config: not_a_map
+''');
+
+        expect(
+          () => configLoader.loadConfig(configFile.path),
+          throwsA(
+            isA<ConfigurationException>().having(
+              (e) => e.message,
+              'message',
+              contains('must be a map'),
+            ),
+          ),
+        );
+      });
+
+      test('throws ConfigurationException when converter type is missing', () {
+        final configFile = File('${tempDir.path}/missing_type.yaml');
+        configFile.writeAsStringSync('''
+input: template.json
+output: lib/generated
+converters:
+  theme_config:
+    converter: ThemeConfigConverter
+    import: package:my_app/models/theme.dart
+''');
+
+        expect(
+          () => configLoader.loadConfig(configFile.path),
+          throwsA(
+            isA<ConfigurationException>().having(
+              (e) => e.message,
+              'message',
+              contains('missing the "type" field'),
+            ),
+          ),
+        );
+      });
+
+      test('throws ConfigurationException when converter class is missing', () {
+        final configFile = File('${tempDir.path}/missing_converter.yaml');
+        configFile.writeAsStringSync('''
+input: template.json
+output: lib/generated
+converters:
+  theme_config:
+    type: ThemeConfig
+    import: package:my_app/models/theme.dart
+''');
+
+        expect(
+          () => configLoader.loadConfig(configFile.path),
+          throwsA(
+            isA<ConfigurationException>().having(
+              (e) => e.message,
+              'message',
+              contains('missing the "converter" field'),
+            ),
+          ),
+        );
+      });
+
+      test('throws ConfigurationException when converter import is missing',
+          () {
+        final configFile = File('${tempDir.path}/missing_import.yaml');
+        configFile.writeAsStringSync('''
+input: template.json
+output: lib/generated
+converters:
+  theme_config:
+    type: ThemeConfig
+    converter: ThemeConfigConverter
+''');
+
+        expect(
+          () => configLoader.loadConfig(configFile.path),
+          throwsA(
+            isA<ConfigurationException>().having(
+              (e) => e.message,
+              'message',
+              contains('missing the "import" field'),
+            ),
+          ),
+        );
+      });
     });
   });
 }

@@ -2,6 +2,7 @@ import 'dart:io';
 import 'dart:convert';
 import 'package:test/test.dart';
 import 'package:remote_config_gen/src/remote_config_generator.dart';
+import 'package:remote_config_gen/src/models/converter_config.dart';
 import 'package:remote_config_gen/src/exceptions/remote_config_exception.dart';
 
 void main() {
@@ -298,6 +299,134 @@ output: ${tempDir.path}/config_output
         await expectLater(
           () => generator.generate('nonexistent_config.yaml'),
           throwsA(isA<ConfigurationException>()),
+        );
+      });
+    });
+
+    group('JSON converters', () {
+      test('generates RemoteConfigJsonParam for JSON params with converters',
+          () async {
+        final template = {
+          'parameters': {
+            'theme_config': {
+              'valueType': 'JSON',
+              'description': 'Theme configuration',
+              'defaultValue': {
+                'value': '{"primaryColor":"blue","darkMode":false}',
+              },
+            },
+            'app_name': {
+              'valueType': 'STRING',
+              'description': 'App name',
+              'defaultValue': {'value': 'MyApp'},
+            },
+            'raw_json': {
+              'valueType': 'JSON',
+              'description': 'Raw JSON without converter',
+              'defaultValue': {'value': '{"key":"value"}'},
+            },
+          },
+        };
+
+        final templateFile = File('${tempDir.path}/converter_template.json');
+        await templateFile.writeAsString(json.encode(template));
+
+        final converters = {
+          'theme_config':
+              const ConverterConfig(
+                paramKey: 'theme_config',
+                type: 'ThemeConfig',
+                converter: 'ThemeConfigConverter',
+                import: 'package:my_app/models/theme.dart',
+              ),
+        };
+
+        await generator.generateFromPaths(
+          templatePath: templateFile.path,
+          outputPath: '${tempDir.path}/output',
+          converters: converters,
+        );
+
+        final outputFile = File(
+          '${tempDir.path}/output/remote_config_params.gen.dart',
+        );
+        expect(outputFile.existsSync(), isTrue);
+
+        final content = await outputFile.readAsString();
+
+        expect(
+          content,
+          contains("import 'package:my_app/models/theme.dart';"),
+        );
+        expect(
+          content,
+          contains("import 'dart:convert';"),
+        );
+        expect(
+          content,
+          contains('abstract interface class RemoteConfigConverter<T>'),
+        );
+        expect(content, contains('class RemoteConfigJsonParam<T>'));
+        expect(
+          content,
+          contains(
+            'static final RemoteConfigJsonParam<ThemeConfig> themeConfig',
+          ),
+        );
+        expect(content, contains('ThemeConfigConverter()'));
+
+        expect(
+          content,
+          contains('static const RemoteConfigParam<String> appName'),
+        );
+        expect(
+          content,
+          contains('static const RemoteConfigParam<String> rawJson'),
+        );
+      });
+
+      test('generates with config file that includes converters', () async {
+        final template = {
+          'parameters': {
+            'theme_config': {
+              'valueType': 'JSON',
+              'defaultValue': {'value': '{"color":"red"}'},
+            },
+          },
+        };
+
+        final templateFile = File('${tempDir.path}/template.json');
+        await templateFile.writeAsString(json.encode(template));
+
+        final configFile = File('${tempDir.path}/config_with_converters.yaml');
+        await configFile.writeAsString('''
+input: ${templateFile.path}
+output: ${tempDir.path}/config_output
+converters:
+  theme_config:
+    type: ThemeConfig
+    converter: ThemeConfigConverter
+    import: package:my_app/models/theme.dart
+''');
+
+        await generator.generate(configFile.path);
+
+        final outputFile = File(
+          '${tempDir.path}/config_output/remote_config_params.gen.dart',
+        );
+        expect(outputFile.existsSync(), isTrue);
+
+        final content = await outputFile.readAsString();
+
+        expect(
+          content,
+          contains(
+            'static final RemoteConfigJsonParam<ThemeConfig> themeConfig',
+          ),
+        );
+        expect(
+          content,
+          contains("import 'package:my_app/models/theme.dart';"),
         );
       });
     });

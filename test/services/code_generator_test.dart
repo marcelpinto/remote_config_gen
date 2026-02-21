@@ -1,5 +1,6 @@
 import 'package:test/test.dart';
 import 'package:remote_config_gen/src/services/code_generator.dart';
+import 'package:remote_config_gen/src/models/converter_config.dart';
 import 'package:remote_config_gen/src/models/remote_config_data.dart';
 
 void main() {
@@ -388,6 +389,317 @@ void main() {
         expect(result, contains('T getValue()'));
         expect(result, contains('Stream<T> observeValue()'));
         expect(result, contains('T _getValue(RemoteConfigValue? value)'));
+      });
+
+      test('generates RemoteConfigJsonParam for JSON param with converter',
+          () {
+        final param = RemoteConfigParameter(
+          key: 'theme_config',
+          valueType: 'JSON',
+          defaultValue: '{"primaryColor":"blue","darkMode":false}',
+          description: 'Theme configuration',
+        );
+
+        final data = RemoteConfigData(
+          parameters: {'theme_config': param},
+          parameterGroups: {},
+          rawData: {
+            'theme_config': '{"primaryColor":"blue","darkMode":false}',
+          },
+        );
+
+        final converters = {
+          'theme_config': const ConverterConfig(
+            paramKey: 'theme_config',
+            type: 'ThemeConfig',
+            converter: 'ThemeConfigConverter',
+            import: 'package:my_app/models/theme.dart',
+          ),
+        };
+
+        final result = generator.generateCode(data, converters: converters);
+
+        expect(result, contains("import 'package:my_app/models/theme.dart';"));
+        expect(result, contains("import 'dart:convert';"));
+        expect(
+          result,
+          contains('abstract interface class RemoteConfigConverter<T>'),
+        );
+        expect(result, contains('class RemoteConfigJsonParam<T>'));
+        expect(
+          result,
+          contains(
+            'static final RemoteConfigJsonParam<ThemeConfig> themeConfig',
+          ),
+        );
+        expect(result, contains('ThemeConfigConverter()'));
+        expect(result, contains("key: 'theme_config'"));
+        expect(result, contains('/// Theme configuration'));
+      });
+
+      test('generates correct defaultValueJson map literal', () {
+        final param = RemoteConfigParameter(
+          key: 'config',
+          valueType: 'JSON',
+          defaultValue: '{"key":"value","count":42}',
+        );
+
+        final data = RemoteConfigData(
+          parameters: {'config': param},
+          parameterGroups: {},
+          rawData: {'config': '{"key":"value","count":42}'},
+        );
+
+        final converters = {
+          'config': const ConverterConfig(
+            paramKey: 'config',
+            type: 'MyConfig',
+            converter: 'MyConfigConverter',
+            import: 'package:app/config.dart',
+          ),
+        };
+
+        final result = generator.generateCode(data, converters: converters);
+
+        expect(
+          result,
+          contains("'key': 'value'"),
+        );
+        expect(result, contains("'count': 42"));
+      });
+
+      test('handles empty JSON default value for converter param', () {
+        final param = RemoteConfigParameter(
+          key: 'config',
+          valueType: 'JSON',
+          defaultValue: '{}',
+        );
+
+        final data = RemoteConfigData(
+          parameters: {'config': param},
+          parameterGroups: {},
+          rawData: {'config': '{}'},
+        );
+
+        final converters = {
+          'config': const ConverterConfig(
+            paramKey: 'config',
+            type: 'MyConfig',
+            converter: 'MyConfigConverter',
+            import: 'package:app/config.dart',
+          ),
+        };
+
+        final result = generator.generateCode(data, converters: converters);
+
+        expect(result, contains('const <String, dynamic>{}'));
+      });
+
+      test('JSON param without converter emits RemoteConfigParam<String>', () {
+        final param = RemoteConfigParameter(
+          key: 'raw_json',
+          valueType: 'JSON',
+          defaultValue: '{"key":"value"}',
+        );
+
+        final data = RemoteConfigData(
+          parameters: {'raw_json': param},
+          parameterGroups: {},
+          rawData: {'raw_json': '{"key":"value"}'},
+        );
+
+        final result = generator.generateCode(data);
+
+        expect(
+          result,
+          contains('static const RemoteConfigParam<String> rawJson'),
+        );
+        expect(result, isNot(contains('RemoteConfigJsonParam')));
+      });
+
+      test('does not emit JSON param classes when no converters configured',
+          () {
+        final data = RemoteConfigData(
+          parameters: {},
+          parameterGroups: {},
+          rawData: {},
+        );
+
+        final result = generator.generateCode(data);
+
+        expect(result, isNot(contains('RemoteConfigJsonParam')));
+        expect(result, isNot(contains('RemoteConfigConverter')));
+        expect(result, isNot(contains("import 'dart:convert'")));
+      });
+
+      test('handles multiple converters with same import', () {
+        final param1 = RemoteConfigParameter(
+          key: 'config_a',
+          valueType: 'JSON',
+          defaultValue: '{"a":1}',
+        );
+        final param2 = RemoteConfigParameter(
+          key: 'config_b',
+          valueType: 'JSON',
+          defaultValue: '{"b":2}',
+        );
+
+        final data = RemoteConfigData(
+          parameters: {'config_a': param1, 'config_b': param2},
+          parameterGroups: {},
+          rawData: {'config_a': '{"a":1}', 'config_b': '{"b":2}'},
+        );
+
+        final converters = {
+          'config_a': const ConverterConfig(
+            paramKey: 'config_a',
+            type: 'ConfigA',
+            converter: 'ConfigAConverter',
+            import: 'package:app/models.dart',
+          ),
+          'config_b': const ConverterConfig(
+            paramKey: 'config_b',
+            type: 'ConfigB',
+            converter: 'ConfigBConverter',
+            import: 'package:app/models.dart',
+          ),
+        };
+
+        final result = generator.generateCode(data, converters: converters);
+
+        expect(
+          result,
+          contains(
+            'static final RemoteConfigJsonParam<ConfigA> configA',
+          ),
+        );
+        expect(
+          result,
+          contains(
+            'static final RemoteConfigJsonParam<ConfigB> configB',
+          ),
+        );
+        // Import should appear only once
+        final importCount = "import 'package:app/models.dart'"
+            .allMatches(result)
+            .length;
+        expect(importCount, equals(1));
+      });
+
+      test('handles mix of converter and non-converter params', () {
+        final stringParam = RemoteConfigParameter(
+          key: 'app_name',
+          valueType: 'STRING',
+          defaultValue: 'MyApp',
+        );
+        final jsonParamWithConverter = RemoteConfigParameter(
+          key: 'theme_config',
+          valueType: 'JSON',
+          defaultValue: '{"color":"red"}',
+        );
+        final jsonParamWithoutConverter = RemoteConfigParameter(
+          key: 'raw_data',
+          valueType: 'JSON',
+          defaultValue: '{}',
+        );
+
+        final data = RemoteConfigData(
+          parameters: {
+            'app_name': stringParam,
+            'theme_config': jsonParamWithConverter,
+            'raw_data': jsonParamWithoutConverter,
+          },
+          parameterGroups: {},
+          rawData: {
+            'app_name': 'MyApp',
+            'theme_config': '{"color":"red"}',
+            'raw_data': '{}',
+          },
+        );
+
+        final converters = {
+          'theme_config': const ConverterConfig(
+            paramKey: 'theme_config',
+            type: 'ThemeConfig',
+            converter: 'ThemeConfigConverter',
+            import: 'package:app/theme.dart',
+          ),
+        };
+
+        final result = generator.generateCode(data, converters: converters);
+
+        expect(
+          result,
+          contains('static const RemoteConfigParam<String> appName'),
+        );
+        expect(
+          result,
+          contains(
+            'static final RemoteConfigJsonParam<ThemeConfig> themeConfig',
+          ),
+        );
+        expect(
+          result,
+          contains('static const RemoteConfigParam<String> rawData'),
+        );
+      });
+
+      test('handles null default value for converter param', () {
+        final param = RemoteConfigParameter(
+          key: 'config',
+          valueType: 'JSON',
+          defaultValue: null,
+        );
+
+        final data = RemoteConfigData(
+          parameters: {'config': param},
+          parameterGroups: {},
+          rawData: {},
+        );
+
+        final converters = {
+          'config': const ConverterConfig(
+            paramKey: 'config',
+            type: 'MyConfig',
+            converter: 'MyConfigConverter',
+            import: 'package:app/config.dart',
+          ),
+        };
+
+        final result = generator.generateCode(data, converters: converters);
+
+        expect(result, contains('const <String, dynamic>{}'));
+      });
+
+      test('handles JSON with nested objects in default value', () {
+        final param = RemoteConfigParameter(
+          key: 'nested_config',
+          valueType: 'JSON',
+          defaultValue: '{"outer":{"inner":"value"},"list":[1,2,3]}',
+        );
+
+        final data = RemoteConfigData(
+          parameters: {'nested_config': param},
+          parameterGroups: {},
+          rawData: {
+            'nested_config': '{"outer":{"inner":"value"},"list":[1,2,3]}',
+          },
+        );
+
+        final converters = {
+          'nested_config': const ConverterConfig(
+            paramKey: 'nested_config',
+            type: 'NestedConfig',
+            converter: 'NestedConfigConverter',
+            import: 'package:app/nested.dart',
+          ),
+        };
+
+        final result = generator.generateCode(data, converters: converters);
+
+        expect(result, contains("'outer'"));
+        expect(result, contains("'inner': 'value'"));
+        expect(result, contains("'list'"));
       });
     });
   });
