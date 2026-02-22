@@ -356,6 +356,97 @@ converters:
           ),
         );
       });
+
+      group('defaults section', () {
+        test('parses valid boolean override at top level', () {
+          final configFile = File('${tempDir.path}/defaults_top.yaml');
+          configFile.writeAsStringSync('''
+input: template.json
+output: lib/generated
+defaults:
+  feature_enabled: false
+''');
+
+          final config = configLoader.loadConfig(configFile.path);
+
+          expect(config.defaultOverrides, hasLength(1));
+          expect(config.defaultOverrides.first.groupName, isNull);
+          expect(config.defaultOverrides.first.paramKey, equals('feature_enabled'));
+          expect(config.defaultOverrides.first.value, isFalse);
+          expect(config.defaultParseWarnings, isEmpty);
+        });
+
+        test('parses valid boolean overrides in a group', () {
+          final configFile = File('${tempDir.path}/defaults_group.yaml');
+          configFile.writeAsStringSync('''
+input: template.json
+output: lib/generated
+defaults:
+  feature_flags:
+    new_onboarding: true
+    dark_mode_v2: false
+''');
+
+          final config = configLoader.loadConfig(configFile.path);
+
+          expect(config.defaultOverrides, hasLength(2));
+          expect(
+            config.defaultOverrides.any((o) =>
+                o.groupName == 'feature_flags' &&
+                o.paramKey == 'new_onboarding' &&
+                o.value == true),
+            isTrue,
+          );
+          expect(
+            config.defaultOverrides.any((o) =>
+                o.groupName == 'feature_flags' &&
+                o.paramKey == 'dark_mode_v2' &&
+                o.value == false),
+            isTrue,
+          );
+          expect(config.defaultParseWarnings, isEmpty);
+        });
+
+        test('adds warning for non-boolean value and does not include in overrides',
+            () {
+          final configFile = File('${tempDir.path}/defaults_non_bool.yaml');
+          configFile.writeAsStringSync('''
+input: template.json
+output: lib/generated
+defaults:
+  feature_flags:
+    new_onboarding: true
+  max_retry_count: 3
+''');
+
+          final config = configLoader.loadConfig(configFile.path);
+
+          expect(config.defaultOverrides, hasLength(1));
+          expect(config.defaultOverrides.first.paramKey, equals('new_onboarding'));
+          expect(config.defaultParseWarnings, hasLength(1));
+          expect(
+            config.defaultParseWarnings.single,
+            contains('max_retry_count'),
+          );
+          expect(
+            config.defaultParseWarnings.single,
+            contains('only boolean overrides'),
+          );
+        });
+
+        test('loads config without defaults section', () {
+          final configFile = File('${tempDir.path}/no_defaults.yaml');
+          configFile.writeAsStringSync('''
+input: template.json
+output: lib/generated
+''');
+
+          final config = configLoader.loadConfig(configFile.path);
+
+          expect(config.defaultOverrides, isEmpty);
+          expect(config.defaultParseWarnings, isEmpty);
+        });
+      });
     });
   });
 }

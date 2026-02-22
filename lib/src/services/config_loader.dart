@@ -4,6 +4,7 @@ import 'package:yaml/yaml.dart' as yaml;
 
 import '../exceptions/remote_config_exception.dart';
 import '../models/converter_config.dart';
+import '../models/default_override.dart';
 import '../models/generation_config.dart';
 
 /// Service responsible for loading configuration from YAML files.
@@ -49,11 +50,14 @@ class ConfigLoader {
       }
 
       final converters = _parseConverters(config);
+      final (overrides, parseWarnings) = _parseDefaults(config['defaults']);
 
       return GenerationConfig(
         inputPath: inputPath,
         outputPath: outputPath,
         converters: converters,
+        defaultOverrides: overrides,
+        defaultParseWarnings: parseWarnings,
       );
     } on yaml.YamlException catch (e) {
       throw ConfigurationException(
@@ -121,5 +125,48 @@ class ConfigLoader {
     }
 
     return result;
+  }
+
+  /// Parses the optional `defaults` section from the config YAML.
+  ///
+  /// Returns (overrides, parseWarnings). Only boolean leaf values are
+  /// included; non-boolean leaves produce a warning.
+  (List<DefaultOverride>, List<String>) _parseDefaults(dynamic raw) {
+    final overrides = <DefaultOverride>[];
+    final warnings = <String>[];
+
+    if (raw == null) return (overrides, warnings);
+    if (raw is! Map) {
+      warnings.add('defaults section must be a YAML map, ignored.');
+      return (overrides, warnings);
+    }
+
+    void walk(Map<dynamic, dynamic> map, String? groupName) {
+      for (final entry in map.entries) {
+        final key = entry.key is String ? entry.key as String : entry.key.toString();
+        final value = entry.value;
+
+        if (value is Map) {
+          walk(Map<dynamic, dynamic>.from(value), key);
+        } else {
+          if (value is bool) {
+            overrides.add(DefaultOverride(
+              groupName: groupName,
+              paramKey: key,
+              value: value,
+            ));
+          } else {
+            final path = groupName != null ? '$groupName.$key' : key;
+            warnings.add(
+              "Default override for '$path' ignored: only boolean overrides "
+              'are supported in this version.',
+            );
+          }
+        }
+      }
+    }
+
+    walk(Map<dynamic, dynamic>.from(raw), null);
+    return (overrides, warnings);
   }
 }

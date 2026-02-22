@@ -140,6 +140,28 @@ RemoteConfigParams.themeConfig.observeValue().listen((ThemeConfig theme) {
 
 JSON parameters **without** a converter entry will continue to be generated as `RemoteConfigParam<String>` (the existing behavior), so this feature is fully backward compatible. The generator will print a warning for JSON params without a converter to prompt you to add one.
 
+## Default overrides (version-aware in-app defaults)
+
+You can override **boolean** default values from the template in `remote_config_gen.yaml`. This is useful to ship a different in-app default for a specific app version (e.g. enable a feature for a release) without changing the Firebase template.
+
+The `defaults` section mirrors the template structure: use the same group and parameter keys as in your Firebase template.
+
+```yaml
+input: remoteconfig.template.json
+output: lib/generated
+defaults:
+  feature_flags:
+    new_onboarding: true
+    dark_mode_v2: false
+  # Top-level boolean param (if present in template):
+  # feature_enabled: true
+```
+
+- Only **boolean** parameters are supported; other types are ignored with a warning.
+- Overrides are validated against the template: unknown keys produce a warning and are ignored.
+- The generated file includes a comment where a default was overridden (e.g. `// Default overridden in remote_config_gen.yaml (template default: false)`).
+- When you run the generator, it prints a short summary of applied overrides and any warnings.
+
 ## Limitations
 
 The same limitations as Firebase Remote config applies. Meaning, you can only use the following types:

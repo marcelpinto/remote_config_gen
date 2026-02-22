@@ -162,6 +162,16 @@ class ApiSettings {
   final RemoteConfigParam<bool> enableLogging;
 }
 
+/// Feature flags
+class FeatureFlags {
+  const FeatureFlags({
+    required this.newOnboarding,
+  });
+
+  /// New onboarding flow
+  final RemoteConfigParam<bool> newOnboarding;
+}
+
 class RemoteConfigParams {
   const RemoteConfigParams._();
 
@@ -171,6 +181,7 @@ class RemoteConfigParams {
     defaultValue: 'Welcome to our amazing app!',
   );
 
+  // Default overridden in remote_config_gen.yaml (template default: true)
   /// Whether the new feature is enabled for users
   static const RemoteConfigParam<bool> featureEnabled = RemoteConfigParam(
     key: 'feature_enabled',
@@ -235,6 +246,15 @@ class RemoteConfigParams {
     enableLogging: RemoteConfigParam(
       key: 'enable_logging',
       defaultValue: false,
+    ),
+  );
+
+  /// Feature flags
+  static const FeatureFlags featureFlags = FeatureFlags(
+    // Default overridden in remote_config_gen.yaml (template default: false)
+    newOnboarding: RemoteConfigParam(
+      key: 'new_onboarding',
+      defaultValue: true,
     ),
   );
 }
