@@ -369,9 +369,7 @@ output: ${tempDir.path}/config_output
         expect(content, contains('class RemoteConfigJsonParam<T>'));
         expect(
           content,
-          contains(
-            'static final RemoteConfigJsonParam<ThemeConfig> themeConfig',
-          ),
+          contains('static const themeConfig = RemoteConfigJsonParam('),
         );
         expect(content, contains('ThemeConfigConverter()'));
 
@@ -420,9 +418,7 @@ converters:
 
         expect(
           content,
-          contains(
-            'static final RemoteConfigJsonParam<ThemeConfig> themeConfig',
-          ),
+          contains('static const themeConfig = RemoteConfigJsonParam('),
         );
         expect(
           content,

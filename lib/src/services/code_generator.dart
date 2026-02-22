@@ -183,7 +183,6 @@ class RemoteConfigParam<T> {
 abstract interface class RemoteConfigConverter<T> {
   const RemoteConfigConverter();
   T fromJson(Map<String, dynamic> json);
-  Map<String, dynamic> toJson(T value);
 }
 
 /// A remote config parameter that holds JSON data and converts it to [T]
@@ -356,60 +355,63 @@ class RemoteConfigJsonParam<T> {
     }
 
     final fieldName = StringUtils.toCamelCase(param.key);
-    final typeName = converterConfig.type;
     final converterName = converterConfig.converter;
 
     buffer.writeln(
       '  static const ${fieldName}Converter = ${converterName}();',
     );
-    buffer.writeln(
-      '  static final RemoteConfigJsonParam<$typeName> $fieldName = RemoteConfigJsonParam(',
-    );
+    buffer.writeln('  static const $fieldName = RemoteConfigJsonParam(');
     buffer.writeln('    key: \'${param.key}\',');
     buffer.writeln(
       '    defaultValueJson: ${_formatJsonDefaultValue(param.defaultValue)},',
     );
-    buffer.writeln(
-      '    converter: ${fieldName}Converter,',
-    );
+    buffer.writeln('    converter: ${fieldName}Converter,');
     buffer.writeln('  );');
     buffer.writeln();
   }
 
   /// Formats the default value for a JSON param as a Dart map literal.
   String _formatJsonDefaultValue(dynamic value) {
-    if (value == null) return 'const <String, dynamic>{}';
+    if (value == null) return '<String, dynamic>{}';
 
     if (value is String) {
       try {
         final parsed = json.decode(value);
         if (parsed is Map) {
-          return _mapToLiteral(Map<String, dynamic>.from(parsed));
+          return _mapToLiteral(
+            Map<String, dynamic>.from(parsed),
+            isConst: false,
+          );
         }
       } catch (_) {
         // fall through
       }
-      return 'const <String, dynamic>{}';
+      return '<String, dynamic>{}';
     }
 
     if (value is Map) {
-      return _mapToLiteral(Map<String, dynamic>.from(value));
+      return _mapToLiteral(Map<String, dynamic>.from(value), isConst: false);
     }
 
-    return 'const <String, dynamic>{}';
+    return '<String, dynamic>{}';
   }
 
   /// Converts a map to a const Dart map literal string.
-  String _mapToLiteral(Map<String, dynamic> map) {
-    if (map.isEmpty) return 'const <String, dynamic>{}';
+  String _mapToLiteral(Map<String, dynamic> map, {bool isConst = true}) {
+    if (map.isEmpty)
+      return isConst ? 'const <String, dynamic>{}' : '<String, dynamic>{}';
 
-    final entries = map.entries.map((e) {
-      final key = "'${e.key}'";
-      final val = _valueToDartLiteral(e.value);
-      return '$key: $val';
-    }).join(', ');
+    final entries = map.entries
+        .map((e) {
+          final key = "'${e.key}'";
+          final val = _valueToDartLiteral(e.value);
+          return '$key: $val';
+        })
+        .join(', ');
 
-    return 'const <String, dynamic>{$entries}';
+    return isConst
+        ? 'const <String, dynamic>{$entries}'
+        : '<String, dynamic>{$entries}';
   }
 
   /// Converts a JSON value to a Dart literal representation.

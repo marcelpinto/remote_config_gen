@@ -92,7 +92,6 @@ class RemoteConfigParam<T> {
 abstract interface class RemoteConfigConverter<T> {
   const RemoteConfigConverter();
   T fromJson(Map<String, dynamic> json);
-  Map<String, dynamic> toJson(T value);
 }
 
 /// A remote config parameter that holds JSON data and converts it to [T]
@@ -198,12 +197,11 @@ class RemoteConfigParams {
 
   /// Theme configuration as JSON
   static const themeConfigConverter = ThemeConfigConverter();
-  static final RemoteConfigJsonParam<ThemeConfig> themeConfig =
-      RemoteConfigJsonParam(
+  static const themeConfig = RemoteConfigJsonParam(
     key: 'theme_config',
-    defaultValueJson: const <String, dynamic>{
+    defaultValueJson: <String, dynamic>{
       'primaryColor': '#FF0000',
-      'darkMode': false,
+      'darkMode': false
     },
     converter: themeConfigConverter,
   );

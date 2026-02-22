@@ -428,9 +428,7 @@ void main() {
         expect(result, contains('class RemoteConfigJsonParam<T>'));
         expect(
           result,
-          contains(
-            'static final RemoteConfigJsonParam<ThemeConfig> themeConfig',
-          ),
+          contains('static const themeConfig = RemoteConfigJsonParam('),
         );
         expect(result, contains('ThemeConfigConverter()'));
         expect(result, contains("key: 'theme_config'"));
@@ -569,15 +567,11 @@ void main() {
 
         expect(
           result,
-          contains(
-            'static final RemoteConfigJsonParam<ConfigA> configA',
-          ),
+          contains('static const configA = RemoteConfigJsonParam('),
         );
         expect(
           result,
-          contains(
-            'static final RemoteConfigJsonParam<ConfigB> configB',
-          ),
+          contains('static const configB = RemoteConfigJsonParam('),
         );
         // Import should appear only once
         final importCount = "import 'package:app/models.dart'"
@@ -634,9 +628,7 @@ void main() {
         );
         expect(
           result,
-          contains(
-            'static final RemoteConfigJsonParam<ThemeConfig> themeConfig',
-          ),
+          contains('static const themeConfig = RemoteConfigJsonParam('),
         );
         expect(
           result,
