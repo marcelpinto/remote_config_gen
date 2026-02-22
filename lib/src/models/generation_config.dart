@@ -26,7 +26,13 @@ class GenerationConfig {
   }
 
   @override
-  int get hashCode => Object.hash(inputPath, outputPath, converters);
+  int get hashCode => Object.hash(
+    inputPath,
+    outputPath,
+    Object.hashAllUnordered(
+      converters.entries.map((entry) => Object.hash(entry.key, entry.value)),
+    ),
+  );
 
   @override
   String toString() {
