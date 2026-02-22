@@ -1,3 +1,4 @@
+import 'models/converter_config.dart';
 import 'services/config_loader.dart';
 import 'services/template_parser.dart';
 import 'services/code_generator.dart';
@@ -28,6 +29,7 @@ class RemoteConfigGenerator {
     await generateFromPaths(
       templatePath: config.inputPath,
       outputPath: config.outputPath,
+      converters: config.converters,
     );
   }
 
@@ -35,12 +37,16 @@ class RemoteConfigGenerator {
   Future<void> generateFromPaths({
     required String templatePath,
     required String outputPath,
+    Map<String, ConverterConfig> converters = const {},
   }) async {
     // Parse the template
     final remoteConfigData = await _templateParser.parseTemplate(templatePath);
 
     // Generate the code
-    final generatedCode = _codeGenerator.generateCode(remoteConfigData);
+    final generatedCode = _codeGenerator.generateCode(
+      remoteConfigData,
+      converters: converters,
+    );
 
     // Write the code to file
     await _fileWriter.writeGeneratedCode(

@@ -47,6 +47,8 @@ class RemoteConfigDemo extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final themeConfig = RemoteConfigParams.themeConfig.getValue();
+
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
@@ -67,6 +69,21 @@ class RemoteConfigDemo extends StatelessWidget {
           _buildParamTile(
             'Languages Config',
             RemoteConfigParams.languagesConfig,
+          ),
+          const SizedBox(height: 16),
+          const Text(
+            'JSON Converter Parameter:',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 8),
+          Card(
+            child: ListTile(
+              title: const Text('Theme Config (typed)'),
+              subtitle: Text(
+                'Primary Color: ${themeConfig.primaryColor}\n'
+                'Dark Mode: ${themeConfig.darkMode}',
+              ),
+            ),
           ),
           const SizedBox(height: 16),
           const Text(
