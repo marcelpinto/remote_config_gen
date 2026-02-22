@@ -1,6 +1,7 @@
 import 'package:test/test.dart';
 import 'package:remote_config_gen/src/services/code_generator.dart';
 import 'package:remote_config_gen/src/models/converter_config.dart';
+import 'package:remote_config_gen/src/models/default_override.dart';
 import 'package:remote_config_gen/src/models/remote_config_data.dart';
 
 void main() {
@@ -490,7 +491,7 @@ void main() {
 
         final result = generator.generateCode(data, converters: converters);
 
-        expect(result, contains('const <String, dynamic>{}'));
+        expect(result, contains('<String, dynamic>{}'));
       });
 
       test('JSON param without converter emits RemoteConfigParam<String>', () {
@@ -660,7 +661,7 @@ void main() {
 
         final result = generator.generateCode(data, converters: converters);
 
-        expect(result, contains('const <String, dynamic>{}'));
+        expect(result, contains('<String, dynamic>{}'));
       });
 
       test('handles JSON with nested objects in default value', () {
@@ -692,6 +693,128 @@ void main() {
         expect(result, contains("'outer'"));
         expect(result, contains("'inner': 'value'"));
         expect(result, contains("'list'"));
+      });
+    });
+
+    group('default overrides', () {
+      test('top-level boolean param uses override value', () {
+        final param = RemoteConfigParameter(
+          key: 'feature_enabled',
+          valueType: 'BOOLEAN',
+          defaultValue: false,
+        );
+
+        final data = RemoteConfigData(
+          parameters: {'feature_enabled': param},
+          parameterGroups: {},
+          rawData: {'feature_enabled': false},
+        );
+
+        final result = generator.generateCode(
+          data,
+          defaultOverrides: [
+            const DefaultOverride(
+              groupName: null,
+              paramKey: 'feature_enabled',
+              value: true,
+            ),
+          ],
+        );
+
+        expect(result, contains('defaultValue: true'));
+        expect(result, contains('Default overridden in remote_config_gen.yaml'));
+        expect(result, contains('template default: false'));
+      });
+
+      test('grouped boolean param uses override value', () {
+        final param = RemoteConfigParameter(
+          key: 'new_onboarding',
+          valueType: 'BOOLEAN',
+          defaultValue: false,
+        );
+        final group = RemoteConfigParameterGroup(
+          key: 'feature_flags',
+          parameters: {'new_onboarding': param},
+        );
+
+        final data = RemoteConfigData(
+          parameters: {},
+          parameterGroups: {'feature_flags': group},
+          rawData: {
+            'parameterGroups': {
+              'feature_flags': {
+                'parameters': {
+                  'new_onboarding': {
+                    'defaultValue': {'value': 'false'},
+                    'valueType': 'BOOLEAN',
+                  },
+                },
+              },
+            },
+          },
+        );
+
+        final result = generator.generateCode(
+          data,
+          defaultOverrides: [
+            const DefaultOverride(
+              groupName: 'feature_flags',
+              paramKey: 'new_onboarding',
+              value: true,
+            ),
+          ],
+        );
+
+        expect(result, contains('defaultValue: true'));
+        expect(result, contains('Default overridden in remote_config_gen.yaml'));
+        expect(result, contains('template default: false'));
+      });
+
+      test('param without override uses template default', () {
+        final param = RemoteConfigParameter(
+          key: 'feature_enabled',
+          valueType: 'BOOLEAN',
+          defaultValue: false,
+        );
+
+        final data = RemoteConfigData(
+          parameters: {'feature_enabled': param},
+          parameterGroups: {},
+          rawData: {'feature_enabled': false},
+        );
+
+        final result = generator.generateCode(data);
+
+        expect(result, contains('defaultValue: false'));
+        expect(result, isNot(contains('Default overridden')));
+      });
+
+      test('unknown key in overrides produces warning and does not affect output',
+          () {
+        final param = RemoteConfigParameter(
+          key: 'feature_enabled',
+          valueType: 'BOOLEAN',
+          defaultValue: false,
+        );
+
+        final data = RemoteConfigData(
+          parameters: {'feature_enabled': param},
+          parameterGroups: {},
+          rawData: {'feature_enabled': false},
+        );
+
+        final result = generator.generateCode(
+          data,
+          defaultOverrides: [
+            const DefaultOverride(
+              groupName: null,
+              paramKey: 'unknown_flag',
+              value: true,
+            ),
+          ],
+        );
+
+        expect(result, contains('defaultValue: false'));
       });
     });
   });

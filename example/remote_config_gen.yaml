@@ -2,6 +2,10 @@
 # This file defines the input JSON file location and output directory
 input: remoteconfig.template.json
 output: lib/generated
+defaults:
+  feature_enabled: true
+  feature_flags:
+    new_onboarding: true
 converters:
   theme_config:
     type: ThemeConfig

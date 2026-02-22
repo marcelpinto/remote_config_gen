@@ -1,4 +1,5 @@
 import 'models/converter_config.dart';
+import 'models/default_override.dart';
 import 'services/config_loader.dart';
 import 'services/template_parser.dart';
 import 'services/code_generator.dart';
@@ -30,6 +31,8 @@ class RemoteConfigGenerator {
       templatePath: config.inputPath,
       outputPath: config.outputPath,
       converters: config.converters,
+      defaultOverrides: config.defaultOverrides,
+      defaultParseWarnings: config.defaultParseWarnings,
     );
   }
 
@@ -38,6 +41,8 @@ class RemoteConfigGenerator {
     required String templatePath,
     required String outputPath,
     Map<String, ConverterConfig> converters = const {},
+    List<DefaultOverride> defaultOverrides = const [],
+    List<String> defaultParseWarnings = const [],
   }) async {
     // Parse the template
     final remoteConfigData = await _templateParser.parseTemplate(templatePath);
@@ -46,6 +51,8 @@ class RemoteConfigGenerator {
     final generatedCode = _codeGenerator.generateCode(
       remoteConfigData,
       converters: converters,
+      defaultOverrides: defaultOverrides,
+      defaultParseWarnings: defaultParseWarnings,
     );
 
     // Write the code to file

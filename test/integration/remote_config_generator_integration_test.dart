@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:test/test.dart';
 import 'package:remote_config_gen/src/remote_config_generator.dart';
 import 'package:remote_config_gen/src/models/converter_config.dart';
+import 'package:remote_config_gen/src/models/default_override.dart';
 import 'package:remote_config_gen/src/exceptions/remote_config_exception.dart';
 
 void main() {
@@ -424,6 +425,55 @@ converters:
           content,
           contains("import 'package:my_app/models/theme.dart';"),
         );
+      });
+
+      test('applies default overrides from yaml and emits override comment',
+          () async {
+        final template = {
+          'parameters': {},
+          'parameterGroups': {
+            'feature_flags': {
+              'description': 'Feature flags',
+              'parameters': {
+                'new_onboarding': {
+                  'valueType': 'BOOLEAN',
+                  'description': 'New onboarding flow',
+                  'defaultValue': {'value': 'false'},
+                },
+              },
+            },
+          },
+        };
+
+        final templateFile = File('${tempDir.path}/template_with_flags.json');
+        await templateFile.writeAsString(json.encode(template));
+
+        await generator.generateFromPaths(
+          templatePath: templateFile.path,
+          outputPath: '${tempDir.path}/output',
+          defaultOverrides: [
+            const DefaultOverride(
+              groupName: 'feature_flags',
+              paramKey: 'new_onboarding',
+              value: true,
+            ),
+          ],
+        );
+
+        final outputFile = File(
+          '${tempDir.path}/output/remote_config_params.gen.dart',
+        );
+        expect(outputFile.existsSync(), isTrue);
+
+        final content = await outputFile.readAsString();
+
+        expect(content, contains('defaultValue: true'));
+        expect(
+          content,
+          contains('Default overridden in remote_config_gen.yaml'),
+        );
+        expect(content, contains('template default: false'));
+        expect(content, contains('newOnboarding'));
       });
     });
 

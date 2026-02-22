@@ -5,6 +5,7 @@ import 'package:dart_style/dart_style.dart';
 
 import '../exceptions/remote_config_exception.dart';
 import '../models/converter_config.dart';
+import '../models/default_override.dart';
 import '../models/remote_config_data.dart';
 import '../utils/string_utils.dart';
 
@@ -22,23 +23,69 @@ class CodeGenerator {
   ///
   /// If [converters] is provided, JSON params with matching keys will emit
   /// `RemoteConfigJsonParam<T>` instead of `RemoteConfigParam<String>`.
+  /// If [defaultOverrides] is provided, boolean defaults are overridden and
+  /// [defaultParseWarnings] are included in the final summary.
   String generateCode(
     RemoteConfigData data, {
     Map<String, ConverterConfig> converters = const {},
+    List<DefaultOverride> defaultOverrides = const [],
+    List<String> defaultParseWarnings = const [],
   }) {
     try {
       final mutableWarnings = <String>[];
+      final defaultSummary = <String>[];
+      final overrideMap = <String, bool>{};
       final buffer = StringBuffer();
+
+      for (final w in defaultParseWarnings) {
+        mutableWarnings.add(w);
+      }
+
+      if (defaultOverrides.isNotEmpty) {
+        for (final o in defaultOverrides) {
+          final param = o.groupName == null
+              ? data.parameters[o.paramKey]
+              : data.parameterGroups[o.groupName]?.parameters[o.paramKey];
+          if (param == null) {
+            mutableWarnings.add(
+              "Default override for '${o.path}' has no matching parameter in the template, ignored.",
+            );
+          } else if (param.valueType.toUpperCase() != 'BOOLEAN') {
+            mutableWarnings.add(
+              "Default override for '${o.path}' ignored: only boolean overrides are supported in this version.",
+            );
+          } else {
+            overrideMap[_overrideKey(o.groupName, o.paramKey)] = o.value;
+          }
+        }
+      }
 
       _generateHeader(buffer);
       _generateImports(buffer, converters);
       _generateRemoteConfigParamClass(buffer);
       _generateJsonParamClassIfNeeded(buffer, converters);
       _generateParameterGroupClasses(buffer, data.parameterGroups);
-      _generateMainClass(buffer, data, converters, mutableWarnings);
+      _generateMainClass(
+        buffer,
+        data,
+        converters,
+        mutableWarnings,
+        overrideMap: overrideMap,
+        defaultSummary: defaultSummary,
+      );
 
-      for (final w in mutableWarnings) {
-        io.stderr.writeln('[WARNING] $w');
+      if (defaultSummary.isNotEmpty) {
+        io.stderr.writeln(
+          'remote_config_gen: ${defaultSummary.length} default override(s) applied.',
+        );
+        for (final line in defaultSummary) {
+          io.stderr.writeln('  $line');
+        }
+      }
+      if (mutableWarnings.isNotEmpty) {
+        for (final w in mutableWarnings) {
+          io.stderr.writeln('  ⚠ $w');
+        }
       }
 
       final formatter = DartFormatter(
@@ -264,8 +311,10 @@ class RemoteConfigJsonParam<T> {
     StringBuffer buffer,
     RemoteConfigData data,
     Map<String, ConverterConfig> converters,
-    List<String> warnings,
-  ) {
+    List<String> warnings, {
+    Map<String, bool> overrideMap = const {},
+    List<String> defaultSummary = const [],
+  }) {
     buffer.writeln('class RemoteConfigParams {');
     buffer.writeln('  const RemoteConfigParams._();');
     buffer.writeln();
@@ -286,7 +335,12 @@ class RemoteConfigJsonParam<T> {
       if (isJson && converterConfig != null) {
         _generateConverterParam(buffer, param, converterConfig);
       } else {
-        _generateStandardParam(buffer, param);
+        _generateStandardParam(
+          buffer,
+          param,
+          overrideMap: overrideMap,
+          defaultSummary: defaultSummary,
+        );
       }
     }
 
@@ -302,18 +356,40 @@ class RemoteConfigJsonParam<T> {
       );
 
       for (final param in group.parameters.values) {
-        final value = _extractGroupParameterValue(
+        final templateValue = _extractGroupParameterValue(
           group.key,
           param,
           data.rawData,
         );
+        final (resolvedValue, isOverridden) = _resolveDefault(
+          group.key,
+          param.key,
+          templateValue,
+          param.valueType,
+          overrideMap,
+        );
+
+        if (isOverridden) {
+          final path = '${group.key}.${param.key}';
+          final templateBool = _templateValueToBool(templateValue);
+          if (resolvedValue == templateBool) {
+            defaultSummary.add(
+              '✓ $path: $templateBool → $resolvedValue (same as template, override has no effect)',
+            );
+          } else {
+            defaultSummary.add('✓ $path: $templateBool → $resolvedValue');
+          }
+          buffer.writeln(
+            '    // Default overridden in remote_config_gen.yaml (template default: $templateBool)',
+          );
+        }
 
         buffer.writeln(
           '    ${StringUtils.toCamelCase(param.key)}: RemoteConfigParam(',
         );
         buffer.writeln('      key: \'${param.key}\',');
         buffer.writeln(
-          '      defaultValue: ${_formatValue(value, param.dartType)},',
+          '      defaultValue: ${_formatValue(resolvedValue, param.dartType)},',
         );
         buffer.writeln('    ),');
       }
@@ -328,8 +404,34 @@ class RemoteConfigJsonParam<T> {
   /// Generates a standard RemoteConfigParam field.
   void _generateStandardParam(
     StringBuffer buffer,
-    RemoteConfigParameter param,
-  ) {
+    RemoteConfigParameter param, {
+    Map<String, bool> overrideMap = const {},
+    List<String> defaultSummary = const [],
+  }) {
+    final (resolvedValue, isOverridden) = _resolveDefault(
+      null,
+      param.key,
+      param.defaultValue,
+      param.valueType,
+      overrideMap,
+    );
+
+    if (isOverridden) {
+      final templateBool = _templateValueToBool(param.defaultValue);
+      if (resolvedValue == templateBool) {
+        defaultSummary.add(
+          '✓ ${param.key}: $templateBool → $resolvedValue (same as template, override has no effect)',
+        );
+      } else {
+        defaultSummary.add(
+          '✓ ${param.key}: $templateBool → $resolvedValue',
+        );
+      }
+      buffer.writeln(
+        '  // Default overridden in remote_config_gen.yaml (template default: $templateBool)',
+      );
+    }
+
     if (param.description != null) {
       buffer.writeln('  /// ${param.description}');
     }
@@ -338,10 +440,40 @@ class RemoteConfigJsonParam<T> {
     );
     buffer.writeln('    key: \'${param.key}\',');
     buffer.writeln(
-      '    defaultValue: ${_formatValue(param.defaultValue, param.dartType)},',
+      '    defaultValue: ${_formatValue(resolvedValue, param.dartType)},',
     );
     buffer.writeln('  );');
     buffer.writeln();
+  }
+
+  static String _overrideKey(String? groupName, String paramKey) =>
+      '${groupName ?? '_top_'}\x00$paramKey';
+
+  /// Coerces a template default value to bool (template JSON often has "true"/"false" strings).
+  bool _templateValueToBool(dynamic value) {
+    if (value is bool) return value;
+    if (value is String) return value.toLowerCase() == 'true';
+    return false;
+  }
+
+  /// Resolves the default value: override if present and boolean, else template.
+  /// Returns (value to emit, whether an override was applied).
+  (dynamic, bool) _resolveDefault(
+    String? groupKey,
+    String paramKey,
+    dynamic templateValue,
+    String valueType,
+    Map<String, bool> overrideMap,
+  ) {
+    if (valueType.toUpperCase() != 'BOOLEAN') {
+      return (templateValue, false);
+    }
+    final key = _overrideKey(groupKey, paramKey);
+    final override = overrideMap[key];
+    if (override == null) {
+      return (templateValue, false);
+    }
+    return (override, true);
   }
 
   /// Generates a RemoteConfigJsonParam field with a converter.
