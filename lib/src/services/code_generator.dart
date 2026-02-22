@@ -403,7 +403,7 @@ class RemoteConfigJsonParam<T> {
 
     final entries = map.entries
         .map((e) {
-          final key = "'${e.key}'";
+          final key = "'${_escapeString(e.key)}'";
           final val = _valueToDartLiteral(e.value);
           return '$key: $val';
         })
